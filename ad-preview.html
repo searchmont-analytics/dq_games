@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio Ad Preview - Ingestion Protocol</title>
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      margin: 0;
+    }
+
+    .preview-label {
+      font-family: 'Courier New', Courier, monospace;
+      color: #94a3b8;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+    }
+
+    /* =========================================================================
+       EMBEDDABLE PORTFOLIO AD BANNER (Self-Contained)
+       ========================================================================= */
+    .dq-ad-banner {
+      width: 100%;
+      max-width: 860px;
+      height: 280px;
+      background: #080c14;
+      border: 2px solid #1e293b;
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(56, 189, 248, 0.1);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .dq-ad-banner:hover {
+      border-color: #38bdf8;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 35px rgba(56, 189, 248, 0.25);
+      transform: translateY(-2px);
+    }
+
+    /* Background animated matrix canvas */
+    .dq-ad-canvas {
+      position: absolute;
+      inset: 0;
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    /* CRT scanlines effect */
+    .dq-ad-scanlines {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.45) 50%);
+      background-size: 100% 3px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Corner badge */
+    .dq-ad-badge {
+      position: absolute;
+      top: 14px;
+      left: 18px;
+      z-index: 5;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dq-ad-badge-dot {
+      width: 6px;
+      height: 6px;
+      background: #00ff88;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #00ff88;
+      animation: adBlink 1.2s infinite;
+    }
+
+    @keyframes adBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    /* Sound Toggle Control (Does not trigger parent link) */
+    .dq-ad-sound-btn {
+      position: absolute;
+      top: 14px;
+      right: 18px;
+      z-index: 10;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #334155;
+      color: #94a3b8;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(4px);
+    }
+
+    .dq-ad-sound-btn:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #fff;
+    }
+
+    .dq-ad-sound-btn.active {
+      color: #00ff88;
+      border-color: #00ff88;
+      background: rgba(0, 255, 136, 0.1);
+    }
+
+    /* Main Content Container */
+    .dq-ad-content {
+      position: relative;
+      z-index: 4;
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .dq-ad-left {
+      max-width: 520px;
+    }
+
+    .dq-ad-title {
+      font-family: 'Courier New', monospace;
+      font-size: 1.8rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #ffffff;
+      margin: 8px 0 6px 0;
+      text-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+    }
+
+    .dq-ad-dynamic-tagline {
+      font-family: 'Courier New', monospace;
+      font-size: 0.95rem;
+      color: #ffaa00;
+      margin-bottom: 12px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+    }
+
+    .dq-ad-desc {
+      font-size: 0.9rem;
+      line-height: 1.45;
+      color: #94a3b8;
+      margin: 0;
+    }
+
+    /* Right CTA button */
+    .dq-ad-cta-box {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .dq-ad-play-btn {
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      color: #ffffff;
+      font-family: 'Courier New', monospace;
+      font-size: 1rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      padding: 12px 24px;
+      border-radius: 6px;
+      border: 1px solid #38bdf8;
+      box-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .dq-ad-banner:hover .dq-ad-play-btn {
+      background: #38bdf8;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.7);
+      transform: scale(1.04);
+    }
+
+    .dq-ad-hint {
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    @media (max-width: 680px) {
+      .dq-ad-banner {
+        height: auto;
+        padding-top: 40px;
+      }
+      .dq-ad-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+      }
+      .dq-ad-cta-box {
+        align-items: flex-start;
+        width: 100%;
+      }
+      .dq-ad-play-btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="preview-label">// PORTFOLIO AD PREVIEW (Interactive Widget)</div>
+
+  <!-- START AD BANNER COMPONENT -->
+  <a class="dq-ad-banner" id="dqAdBanner" href="https://searchmont-analytics.github.io/dq_games/" target="_blank" rel="noopener noreferrer">
+    <canvas class="dq-ad-canvas" id="dqAdCanvas"></canvas>
+    <div class="dq-ad-scanlines"></div>
+
+    <div class="dq-ad-badge">
+      <span class="dq-ad-badge-dot"></span>
+      <span>FEATURED GAME PROJECT</span>
+    </div>
+
+    <!-- Sound Toggle Button (Clicking sound does NOT navigate) -->
+    <button class="dq-ad-sound-btn" id="dqAdSoundBtn" onclick="toggleAdAudio(event)">
+      <span id="dqAdSoundIcon">🔇</span>
+      <span id="dqAdSoundLabel">SOUND OFF</span>
+    </button>
+
+    <div class="dq-ad-content">
+      <div class="dq-ad-left">
+        <h3 class="dq-ad-title">INGESTION PROTOCOL</h3>
+        <div class="dq-ad-dynamic-tagline" id="dqAdTagline">
+          [!] CRITICAL DATA CORRUPTION DETECTED
+        </div>
+        <p class="dq-ad-desc">
+          A retro-cyberpunk simulation where you play the Lead Data Steward defending the Enterprise Data Warehouse against corrupt schemas, null keys, and rogue PII leaks.
+        </p>
+      </div>
+
+      <div class="dq-ad-cta-box">
+        <div class="dq-ad-play-btn">
+          <span>PLAY IN BROWSER</span>
+          <span>&rarr;</span>
+        </div>
+        <span class="dq-ad-hint">Zero install &bull; Instant play</span>
+      </div>
+    </div>
+  </a>
+  <!-- END AD BANNER COMPONENT -->
+
+  <script>
+    // =========================================================================
+    // BACKGROUND ANIMATION (Matrix stream of data quality terms)
+    // =========================================================================
+    (function initBannerCanvas() {
+      const canvas = document.getElementById('dqAdCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = canvas.parentElement.offsetWidth;
+        canvas.height = canvas.parentElement.offsetHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const tokens = ["NULL", "DIRTY_ROW", "REGEX_FAIL", "PII_LEAK", "SSN_DETECTED", "SCHEMA_DRIFT", "MDM_CLASH", "0x00_CORRUPT"];
+      const columns = Math.floor(canvas.width / 90);
+      const drops = Array(columns).fill(0).map(() => Math.random() * -100);
+
+      function draw() {
+        ctx.fillStyle = 'rgba(8, 12, 20, 0.2)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#00ff88';
+        ctx.font = '10px Courier New, monospace';
+
+        for (let i = 0; i < drops.length; i++) {
+          const text = tokens[Math.floor(Math.random() * tokens.length)];
+          ctx.fillText(text, i * 90, drops[i]);
+          drops[i] += 8;
+          if (drops[i] > canvas.height && Math.random() > 0.96) {
+            drops[i] = 0;
+          }
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // =========================================================================
+    // DYNAMIC TAGLINE CYCLER
+    // =========================================================================
+    (function cycleTaglines() {
+      const lines = [
+        "[!] 42 LEGACY MAINFRAMES BURNING",
+        "[!] DIRTY DATA HAS BREACHED THE BUFFER",
+        "[!] CAN YOU DEFEND THE GOLDEN RECORD?",
+        "[!] UNMASKED PII LEAKS DETECTED IN NOTES",
+        "[!] THE AUDITORS ARE AT THE GATES"
+      ];
+      let idx = 0;
+      const el = document.getElementById('dqAdTagline');
+      setInterval(() => {
+        idx = (idx + 1) % lines.length;
+        el.style.opacity = '0';
+        setTimeout(() => {
+          el.textContent = lines[idx];
+          el.style.opacity = '1';
+        }, 200);
+      }, 3200);
+    })();
+
+    // =========================================================================
+    // PROCEDURAL AUDIO & TEASER VOICEOVER (Web Audio API & Speech Synthesis)
+    // =========================================================================
+    let adAudioCtx = null;
+    let isAdAudioOn = false;
+    let adMusicTimer = null;
+    let adDroneGain = null;
+    let activeDrone = null;
+
+    function turnOffAdAudio() {
+      if (isAdAudioOn) {
+        isAdAudioOn = false;
+        const btn = document.getElementById('dqAdSoundBtn');
+        const icon = document.getElementById('dqAdSoundIcon');
+        const label = document.getElementById('dqAdSoundLabel');
+        if (btn && icon && label) {
+          btn.classList.remove('active');
+          icon.textContent = '🔇';
+          label.textContent = 'SOUND OFF';
+        }
+        stopAdSoundtrack();
+      }
+    }
+
+    function toggleAdAudio(e) {
+      // Prevent clicking the sound button from navigating to the game URL
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (isAdAudioOn) {
+        turnOffAdAudio();
+      } else {
+        isAdAudioOn = true;
+        const btn = document.getElementById('dqAdSoundBtn');
+        const icon = document.getElementById('dqAdSoundIcon');
+        const label = document.getElementById('dqAdSoundLabel');
+        if (btn && icon && label) {
+          btn.classList.add('active');
+          icon.textContent = '🔊';
+          label.textContent = 'SOUND ON';
+        }
+        startAdSoundtrack();
+        speakTeaserLine();
+      }
+    }
+
+    // 1. Immediately turn off ad sound when user clicks the card to play the game
+    const adBannerLink = document.getElementById('dqAdBanner');
+    if (adBannerLink) {
+      adBannerLink.addEventListener('click', (e) => {
+        if (e.target.closest('#dqAdSoundBtn')) return;
+        turnOffAdAudio();
+      });
+    }
+
+    // 2. Automatically turn off ad sound when switching tabs to the game
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        turnOffAdAudio();
+      }
+    });
+
+    function startAdSoundtrack() {
+      if (!adAudioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        adAudioCtx = new AudioContext();
+      }
+      if (adAudioCtx.state === 'suspended') {
+        adAudioCtx.resume();
+      }
+
+      const now = adAudioCtx.currentTime;
+
+      // Atmospheric Drone
+      const droneOsc = adAudioCtx.createOscillator();
+      const droneFilter = adAudioCtx.createBiquadFilter();
+      adDroneGain = adAudioCtx.createGain();
+
+      droneOsc.type = 'sawtooth';
+      droneOsc.frequency.setValueAtTime(55, now);
+      droneFilter.type = 'lowpass';
+      droneFilter.frequency.setValueAtTime(140, now);
+
+      adDroneGain.gain.setValueAtTime(0.01, now);
+      adDroneGain.gain.linearRampToValueAtTime(0.18, now + 1.5);
+
+      droneOsc.connect(droneFilter);
+      droneFilter.connect(adDroneGain);
+      adDroneGain.connect(adAudioCtx.destination);
+      droneOsc.start(now);
+      activeDrone = droneOsc;
+
+      // Cyberpunk Heartbeat pulse
+      let step = 0;
+      adMusicTimer = setInterval(() => {
+        if (!isAdAudioOn || !adAudioCtx) return;
+        const t = adAudioCtx.currentTime;
+        if (step % 2 === 0) {
+          const kickOsc = adAudioCtx.createOscillator();
+          const kickGain = adAudioCtx.createGain();
+          kickOsc.type = 'sine';
+          kickOsc.frequency.setValueAtTime(110, t);
+          kickOsc.frequency.exponentialRampToValueAtTime(32, t + 0.12);
+          kickGain.gain.setValueAtTime(0.3, t);
+          kickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+
+          kickOsc.connect(kickGain);
+          kickGain.connect(adAudioCtx.destination);
+          kickOsc.start(t);
+          kickOsc.stop(t + 0.18);
+        }
+        step++;
+      }, 280);
+    }
+
+    function stopAdSoundtrack() {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (adMusicTimer) {
+        clearInterval(adMusicTimer);
+        adMusicTimer = null;
+      }
+      if (adDroneGain && adAudioCtx) {
+        adDroneGain.gain.linearRampToValueAtTime(0.001, adAudioCtx.currentTime + 0.4);
+        setTimeout(() => {
+          if (activeDrone) {
+            try { activeDrone.stop(); } catch(err) {}
+          }
+        }, 500);
+      }
+    }
+
+    function speakTeaserLine() {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+
+      const text = "Alert. Ingestion Gatekeeper online. Can you stop dirty data from corrupting the lakehouse? Take your post.";
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate = 1.0;
+      utt.pitch = 0.88;
+
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v => v.lang.startsWith('en') && (v.name.includes('David') || v.name.includes('Natural') || v.name.includes('Google')));
+      if (preferred) utt.voice = preferred;
+
+      window.speechSynthesis.speak(utt);
+    }
+  </script>
+</body>
+</html>
