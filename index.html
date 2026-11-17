@@ -600,6 +600,25 @@
       font-weight: bold;
     }
 
+    .field-name.drift-key {
+      color: var(--terminal-amber);
+    }
+
+    .drift-badge {
+      background: rgba(255, 170, 0, 0.2);
+      border: 1px solid var(--terminal-amber);
+      color: var(--terminal-amber);
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-left: 6px;
+      letter-spacing: 1px;
+    }
+
+    .field-val.drift-val {
+      color: #fde047;
+    }
+
     .stamp-overlay {
       position: absolute;
       top: 40%;
@@ -1244,8 +1263,8 @@
       speakShiftBriefing(shiftIdx) {
         const briefings = [
           "Shift One. Baseline governance loaded. Mandatory customer fields cannot be null. Emails must be valid syntax. Order amount must be positive. Protect the warehouse.",
-          "Shift Two. Master Data integrity protocol engaged. Verify incoming customer IDs against the Golden Record Cache. Conflicting entity names must be quarantined for deduplication. Enforce two-letter ISO country codes.",
-          "Shift Three. Code Red: Privacy and regulatory compliance. Free-text fields are leaking unmasked Social Security numbers and credit cards. Any PII leak must be quarantined immediately. Reject broken dates."
+          "Shift Two. Master Data integrity and Schema Drift containment. Upstream services pushed unannounced database changes. Enforce exact schema contracts: reject any payloads with renamed keys like client account number. Quarantine conflicting Master Data records.",
+          "Shift Three. Code Red: Privacy and regulatory compliance. Scan all payloads for raw Social Security numbers and credit cards. Reject impossible calendar dates and corrupted data type drift."
         ];
         const speech = briefings[shiftIdx] || "Review the daily policy and process incoming records.";
         this.speak(speech, { rate: 0.98, pitch: 0.9 });
@@ -1524,11 +1543,12 @@
       },
       {
         number: 2,
-        title: "Shift 2: Master Data Consistency (MDM)",
+        title: "Shift 2: Master Data (MDM) & Schema Drift",
         badge: "SHIFT: 2 / 3",
+        expectedContractKeys: ["customer_id", "name", "email", "country", "amount"],
         rules: [
-          { title: "Rule 1: Previous Rules Apply", desc: "Mandatory fields, valid emails, positive amounts." },
-          { title: "Rule 2: Master Data Integrity", desc: "Customer ID must match Golden Record Cache. Conflicting names must be QUARANTINED for steward deduplication!" },
+          { title: "Rule 1: Schema Contract Conformance", desc: "Contract keys required: [customer_id, name, email, country, amount]. Reject unannounced renamed keys (SCHEMA DRIFT)!" },
+          { title: "Rule 2: Master Data Integrity (MDM)", desc: "Customer ID must match Golden Record Cache. Conflicting names or aliases must be QUARANTINED for steward review." },
           { title: "Rule 3: ISO Country Codes", desc: "Country must be a valid 2-letter ISO code (e.g., US, DE, JP, UK)." }
         ],
         records: [
@@ -1555,10 +1575,10 @@
           },
           {
             id: "REC-204",
-            source: "MOBILE_APP",
-            fields: { "customer_id": "C-103", "name": "Kyoto Dynamics", "email": "service@kyoto.jp", "country": "JP", "amount": "$2,100.00" },
-            correctDecision: "APPROVE",
-            flaw: null
+            source: "UNVERSIONED_API_V2",
+            fields: { "client_acc_no": "C-103", "org_name": "Kyoto Dynamics", "email": "service@kyoto.jp", "country": "JP", "amount": "$2,100.00" },
+            correctDecision: "REJECT",
+            flaw: "SCHEMA DRIFT VIOLATION! Upstream renamed contract keys ('client_acc_no' instead of 'customer_id', 'org_name' instead of 'name')."
           },
           {
             id: "REC-205",
@@ -1571,11 +1591,12 @@
       },
       {
         number: 3,
-        title: "Shift 3: Privacy, GDPR & PII Protection",
+        title: "Shift 3: Privacy, GDPR & Type Drift",
         badge: "SHIFT: 3 / 3",
+        expectedContractKeys: ["customer_id", "name", "email", "notes", "date"],
         rules: [
           { title: "CRITICAL: PII Leak Containment", desc: "Free-text notes containing raw Social Security Numbers (SSN) or Credit Cards MUST BE QUARANTINED." },
-          { title: "Rule 2: Schema Conformance", desc: "Dates must conform to YYYY-MM-DD. Reject invalid/corrupted dates." },
+          { title: "Rule 2: Schema Conformance & Type Integrity", desc: "Dates must conform to string YYYY-MM-DD. Reject invalid dates or raw Unix epoch integer drift." },
           { title: "Rule 3: Ingestion Gatekeeper SLA", desc: "Clean records must be approved immediately. Do not quarantine clean records!" }
         ],
         records: [
@@ -1609,6 +1630,13 @@
           },
           {
             id: "REC-305",
+            source: "STREAMING_KAFKA_FEED",
+            fields: { "customer_id": "C-101", "name": "Acme Logistics", "email": "shipping@acme.com", "notes": "Batch processed.", "date": 1763328000 },
+            correctDecision: "REJECT",
+            flaw: "SCHEMA DRIFT (TYPE MUTATION): Upstream sent raw Unix epoch integer (1763328000) instead of contract string (YYYY-MM-DD)."
+          },
+          {
+            id: "REC-306",
             source: "AUTOMATED_BATCH",
             fields: { "customer_id": "C-101", "name": "Acme Logistics", "email": "shipping@acme.com", "notes": "Shipment cleared customs.", "date": "2026-11-16" },
             correctDecision: "APPROVE",
@@ -1675,12 +1703,21 @@
       const table = document.getElementById('fieldsTable');
       table.innerHTML = '';
 
+      const expectedKeys = shift.expectedContractKeys || [];
+
       for (const [key, val] of Object.entries(record.fields)) {
         const tr = document.createElement('tr');
         const isNull = val === "NULL" || val === "" || val === null;
+        const isKeyDrift = expectedKeys.length > 0 && !expectedKeys.includes(key);
+        const isTypeDrift = key === 'date' && typeof val === 'number';
+
         tr.innerHTML = `
-          <td class="field-name">${key}</td>
-          <td class="field-val ${isNull ? 'null-val' : ''}">${val}</td>
+          <td class="field-name ${isKeyDrift ? 'drift-key' : ''}">
+            ${key} ${isKeyDrift ? '<span class="drift-badge">SCHEMA DRIFT</span>' : ''}
+          </td>
+          <td class="field-val ${isNull ? 'null-val' : ''} ${(isKeyDrift || isTypeDrift) ? 'drift-val' : ''}">
+            ${val} ${isTypeDrift ? '<span class="drift-badge">TYPE DRIFT</span>' : ''}
+          </td>
         `;
         table.appendChild(tr);
       }
